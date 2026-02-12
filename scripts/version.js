@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -25,3 +25,17 @@ const appSveltePath = join(rootDir, 'src', 'App.svelte');
 let appSvelte = readFileSync(appSveltePath, 'utf-8');
 appSvelte = appSvelte.replace(/<span>v[\d.]+<\/span>/g, `<span>v${version}</span>`);
 writeFileSync(appSveltePath, appSvelte);
+
+const pkgbuildPath = join(rootDir, 'AUR', 'PKGBUILD');
+if (existsSync(pkgbuildPath)) {
+  let pkgbuild = readFileSync(pkgbuildPath, 'utf-8');
+  pkgbuild = pkgbuild.replace(/^pkgver=.*$/m, `pkgver=${version}`);
+  writeFileSync(pkgbuildPath, pkgbuild);
+}
+
+const pkgbuildBinPath = join(rootDir, 'AUR', 'PKGBUILD-bin');
+if (existsSync(pkgbuildBinPath)) {
+  let pkgbuildBin = readFileSync(pkgbuildBinPath, 'utf-8');
+  pkgbuildBin = pkgbuildBin.replace(/^pkgver=.*$/m, `pkgver=${version}`);
+  writeFileSync(pkgbuildBinPath, pkgbuildBin);
+}

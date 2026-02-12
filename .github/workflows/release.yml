@@ -36,12 +36,37 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Verify version matches tag
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Version mismatch! Tag is v${TAG_VERSION} but package.json has ${PKG_VERSION}"
+            echo "Update package.json version to ${TAG_VERSION} before tagging."
+            exit 1
+          fi
+          echo "Version OK: ${PKG_VERSION}"
+
       - name: Build
         run: npm run tauri build
 
       - name: Get version from tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Detect built deb filename
+        id: detect_deb
+        run: |
+          DEB_FILE=$(find src-tauri/target/release/bundle/deb -name "*.deb" | head -n 1)
+          if [ -z "$DEB_FILE" ]; then
+            echo "::error::No .deb file found in src-tauri/target/release/bundle/deb/"
+            ls -R src-tauri/target/release/bundle/
+            exit 1
+          fi
+          DEB_BASENAME=$(basename "$DEB_FILE")
+          echo "Found DEB file: $DEB_FILE ($DEB_BASENAME)"
+          echo "DEB_FILE=$DEB_FILE" >> $GITHUB_OUTPUT
+          echo "DEB_BASENAME=$DEB_BASENAME" >> $GITHUB_OUTPUT
 
       - name: Update PKGBUILD
         run: |
@@ -55,15 +80,10 @@ jobs:
       - name: Update PKGBUILD-bin
         run: |
           VERSION="${{ steps.get_version.outputs.VERSION }}"
-          DEB_FILE=$(find src-tauri/target/release/bundle/deb -name "*.deb" | head -n 1)
+          DEB_FILE="${{ steps.detect_deb.outputs.DEB_FILE }}"
+          DEB_BASENAME="${{ steps.detect_deb.outputs.DEB_BASENAME }}"
           
-          if [ -z "$DEB_FILE" ]; then
-            echo "Error: No .deb file found in src-tauri/target/release/bundle/deb/"
-            ls -R src-tauri/target/release
-            exit 1
-          fi
-          
-          echo "Found DEB file: $DEB_FILE"
+          echo "Using DEB: $DEB_BASENAME"
           DEB_SHA=$(sha256sum "$DEB_FILE" | cut -d' ' -f1)
           
           LICENSE_URL="https://raw.githubusercontent.com/FrogSnot/Spent/v${VERSION}/LICENSE"
@@ -72,7 +92,8 @@ jobs:
           README_SHA=$(curl -sL "$README_URL" | sha256sum | cut -d' ' -f1)
           
           sed -i "s/pkgver=.*/pkgver=${VERSION}/" AUR/PKGBUILD-bin
-          sed -i "s/_pkgrealversion=.*/_pkgrealversion=${VERSION}/" AUR/PKGBUILD-bin
+          
+          sed -i "s|\(releases/download/[^/]*/\).*\.deb\")|\1${DEB_BASENAME}\")|" AUR/PKGBUILD-bin
           
           perl -i -pe "BEGIN{undef $/;} s/sha256sums=\([^)]+\)/sha256sums=('${LICENSE_SHA}'\\n            '${README_SHA}')/smg" AUR/PKGBUILD-bin
           perl -i -pe "s/sha256sums_x86_64=\([^)]+\)/sha256sums_x86_64=('${DEB_SHA}')/g" AUR/PKGBUILD-bin

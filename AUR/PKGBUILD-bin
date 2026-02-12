@@ -4,10 +4,9 @@ _pkgname=Spent
 pkgname=${_pkgname,,}-bin
 pkgdesc="Minimalist personal finance tracker for Linux desktop"
 
-pkgver=1.1.6
+pkgver=1.1.7
 pkgrel=2
 _pkgvername=v${pkgver}
-_pkgrealversion=1.1.6
 
 arch=('x86_64')
 _barch=('amd64')
@@ -22,7 +21,7 @@ depends=('glibc' 'gcc-libs' 'glib2' 'webkit2gtk-4.1' 'gtk3' 'gdk-pixbuf2' 'cairo
 
 source=("LICENSE-${pkgver}::${_urlraw}/LICENSE"
         "README-${pkgver}.md::${_urlraw}/README.md")
-source_x86_64=("${_pkgname}-${arch[0]}-${pkgver}.deb::${url}/releases/download/${_pkgvername}/spent_${_pkgrealversion}_${_barch[0]}.deb")
+source_x86_64=("${_pkgname}-${arch[0]}-${pkgver}.deb::${url}/releases/download/${_pkgvername}/${_pkgname}_${pkgver}_${_barch[0]}.deb")
 sha256sums=('SKIP'
             'SKIP')
 sha256sums_x86_64=('SKIP')
