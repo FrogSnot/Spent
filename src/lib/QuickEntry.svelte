@@ -5,6 +5,7 @@
   import { invoke } from '@tauri-apps/api/core';
   import { X, DollarSign, Plus, Trash2 } from 'lucide-svelte';
   import Dropdown from './Dropdown.svelte';
+  import { currencySettings } from './stores';
 
   const dispatch = createEventDispatcher();
 
@@ -161,18 +162,33 @@
           Amount *
         </label>
         <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <span class="text-gray-500 text-lg">$</span>
-          </div>
-          <input
-            id="amount"
-            type="number"
-            step="0.01"
-            bind:value={amount}
-            placeholder="0.00"
-            class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-lg font-semibold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            required
-          />
+          {#if $currencySettings.position === 'before'}
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <span class="text-gray-500 text-lg">{$currencySettings.symbol}</span>
+            </div>
+            <input
+              id="amount"
+              type="number"
+              step="0.01"
+              bind:value={amount}
+              placeholder="0.00"
+              class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-lg font-semibold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+            />
+          {:else}
+            <input
+              id="amount"
+              type="number"
+              step="0.01"
+              bind:value={amount}
+              placeholder="0.00"
+              class="w-full pl-4 pr-10 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-lg font-semibold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              required
+            />
+            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <span class="text-gray-500 text-lg">{$currencySettings.symbol}</span>
+            </div>
+          {/if}
         </div>
       </div>
 
