@@ -1,6 +1,6 @@
 # Maintainer: FrogSnot
 pkgname=spent
-pkgver=1.1.7
+pkgver=1.1.8
 pkgrel=1
 pkgdesc="Minimalist personal finance tracker for Linux desktop"
 arch=('x86_64')
