@@ -132,6 +132,7 @@ fn update_container(id: i64, name: String, db: tauri::State<Arc<Database>>) -> R
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 fn import_csv(
     csv_content: String,
     container_id: i64,

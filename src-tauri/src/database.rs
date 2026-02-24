@@ -240,7 +240,7 @@ impl Database {
         )?;
         
         let mut wtr = csv::Writer::from_writer(vec![]);
-        wtr.write_record(&["ID", "Amount", "Description", "Category", "Date"]).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
+        wtr.write_record(["ID", "Amount", "Description", "Category", "Date"]).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
 
         let rows = stmt.query_map([container_id], |row| {
             Ok((
@@ -476,6 +476,7 @@ pub struct ImportResult {
 }
 
 impl Database {
+    #[allow(clippy::too_many_arguments)]
     pub fn import_transactions_from_csv(
         &self,
         csv_content: String,
@@ -561,7 +562,7 @@ impl Database {
 
         match cleaned.parse::<f64>() {
             Ok(amount) => Ok((amount * 100.0).round() as i64),
-            Err(_) => Err(format!("Cannot parse as number")),
+            Err(_) => Err("Cannot parse as number".to_string()),
         }
     }
 
