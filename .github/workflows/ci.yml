@@ -54,6 +54,9 @@ jobs:
       - name: Svelte check
         run: npm run check
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Cargo clippy
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
