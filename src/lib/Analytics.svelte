@@ -3,8 +3,6 @@
   import { currencySettings, formatCurrency as formatCurrencyHelper } from './stores';
 
   export let categoryTotals: Array<[string, number]>;
-  export let transactions: Array<any>;
-  export let monthlyBalance: number;
 
   $: formatCurrency = (cents: number): string => {
     return formatCurrencyHelper(cents, $currencySettings);

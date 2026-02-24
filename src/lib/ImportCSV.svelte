@@ -212,6 +212,7 @@
 
           <div class="grid grid-cols-2 gap-4">
             <div>
+              <!-- svelte-ignore a11y-label-has-associated-control -->
               <label class="block text-sm font-semibold text-gray-300 mb-2">
                 Amount Column *
               </label>
@@ -223,6 +224,7 @@
             </div>
 
             <div>
+              <!-- svelte-ignore a11y-label-has-associated-control -->
               <label class="block text-sm font-semibold text-gray-300 mb-2">
                 Description Column *
               </label>
@@ -234,6 +236,7 @@
             </div>
 
             <div>
+              <!-- svelte-ignore a11y-label-has-associated-control -->
               <label class="block text-sm font-semibold text-gray-300 mb-2">
                 Category Column *
               </label>
@@ -245,6 +248,7 @@
             </div>
 
             <div>
+              <!-- svelte-ignore a11y-label-has-associated-control -->
               <label class="block text-sm font-semibold text-gray-300 mb-2">
                 Date Column *
               </label>

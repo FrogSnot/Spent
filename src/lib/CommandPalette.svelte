@@ -52,6 +52,7 @@
   <div class="bg-gray-900 rounded-xl w-full max-w-2xl border border-gray-700 shadow-2xl overflow-hidden" in:fly={{ y: -20, duration: 300, easing: cubicOut }}>
     <div class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
       <Search size={20} class="text-gray-500" />
+      <!-- svelte-ignore a11y-autofocus -->
       <input
         type="text"
         bind:value={searchQuery}

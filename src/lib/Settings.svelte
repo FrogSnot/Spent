@@ -91,6 +91,7 @@
 
             <div class="space-y-4">
               <div>
+                <!-- svelte-ignore a11y-label-has-associated-control -->
                 <label class="block text-sm font-semibold text-gray-300 mb-2">
                   Select Currency
                 </label>

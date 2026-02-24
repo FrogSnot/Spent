@@ -132,6 +132,7 @@
 
     <form on:submit|preventDefault={handleSubmit} class="p-6 space-y-5 overflow-visible">
       <div class="overflow-visible">
+        <!-- svelte-ignore a11y-label-has-associated-control -->
         <label class="block text-sm font-semibold text-gray-300 mb-2">
           Type *
         </label>

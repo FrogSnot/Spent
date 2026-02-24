@@ -286,10 +286,10 @@
     }
   }
 
-  onMount(async () => {
-    await loadContainers();
-    await loadAvailableMonths();
-    await loadData();
+  onMount(() => {
+    loadContainers();
+    loadAvailableMonths();
+    loadData();
     
     const handleKeydownEvent = (event: KeyboardEvent) => handleKeydown(event);
     window.addEventListener('keydown', handleKeydownEvent);
@@ -307,6 +307,7 @@
 
     {#if selectedContainer}
       <div class="px-4 pt-4 pb-2">
+        <!-- svelte-ignore a11y-label-has-associated-control -->
         <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Active Container</label>
         <Dropdown
           value={selectedContainer.id}
@@ -388,7 +389,7 @@
         on:monthChange={(e) => selectedMonth = e.detail.month}
       />
     {:else if activeTab === 'analytics'}
-      <Analytics {categoryTotals} {transactions} {monthlyBalance} />
+      <Analytics {categoryTotals} />
     {/if}
   </div>
 

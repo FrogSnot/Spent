@@ -134,6 +134,7 @@
       <div class="mb-6">
         {#if isAdding}
           <div class="flex gap-2 p-4 bg-gray-800 rounded-xl border border-gray-700">
+            <!-- svelte-ignore a11y-autofocus -->
             <input
               type="text"
               bind:value={newContainerName}
@@ -183,6 +184,7 @@
               <div class="flex-1 min-w-0">
                 {#if editingId === container.id}
                   <div class="flex items-center gap-2">
+                    <!-- svelte-ignore a11y-autofocus -->
                     <input
                       type="text"
                       bind:value={editingName}

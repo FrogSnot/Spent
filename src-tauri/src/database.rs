@@ -617,3 +617,311 @@ impl Database {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn test_db() -> Database {
+        Database::new(PathBuf::from(":memory:")).expect("Failed to create in-memory database")
+    }
+
+    #[test]
+    fn init_creates_default_container() {
+        let db = test_db();
+        let containers = db.get_containers().unwrap();
+        assert_eq!(containers.len(), 1);
+        assert_eq!(containers[0].name, "Personal");
+        assert!(containers[0].is_default);
+    }
+
+    #[test]
+    fn init_creates_default_categories() {
+        let db = test_db();
+        let categories = db.get_categories().unwrap();
+        assert!(!categories.is_empty());
+        assert!(categories.contains(&"Food & Dining".to_string()));
+        assert!(categories.contains(&"Income".to_string()));
+        assert!(categories.contains(&"Other".to_string()));
+    }
+
+    #[test]
+    fn add_and_get_transaction() {
+        let db = test_db();
+        let tx = db.add_transaction(NewTransaction {
+            amount: -1500,
+            description: Some("Groceries".into()),
+            category: Some("Food & Dining".into()),
+            container_id: 1,
+        }).unwrap();
+
+        assert_eq!(tx.amount, -1500);
+        assert_eq!(tx.description, "Groceries");
+        assert_eq!(tx.category, "Food & Dining");
+        assert_eq!(tx.container_id, 1);
+
+        let transactions = db.get_transactions(1, None).unwrap();
+        assert_eq!(transactions.len(), 1);
+        assert_eq!(transactions[0].id, tx.id);
+    }
+
+    #[test]
+    fn add_transaction_defaults() {
+        let db = test_db();
+        let tx = db.add_transaction(NewTransaction {
+            amount: 5000,
+            description: None,
+            category: None,
+            container_id: 1,
+        }).unwrap();
+
+        assert_eq!(tx.description, "Untitled");
+        assert_eq!(tx.category, "Other");
+    }
+
+    #[test]
+    fn get_transactions_respects_limit() {
+        let db = test_db();
+        for i in 0..5 {
+            db.add_transaction(NewTransaction {
+                amount: i * 100,
+                description: None,
+                category: None,
+                container_id: 1,
+            }).unwrap();
+        }
+
+        let all = db.get_transactions(1, None).unwrap();
+        assert_eq!(all.len(), 5);
+
+        let limited = db.get_transactions(1, Some(3)).unwrap();
+        assert_eq!(limited.len(), 3);
+    }
+
+    #[test]
+    fn update_transaction() {
+        let db = test_db();
+        let tx = db.add_transaction(NewTransaction {
+            amount: -500,
+            description: Some("Coffee".into()),
+            category: Some("Food & Dining".into()),
+            container_id: 1,
+        }).unwrap();
+
+        let updated = db.update_transaction(tx.id, -750, "Latte".into(), "Shopping".into()).unwrap();
+        assert_eq!(updated.amount, -750);
+        assert_eq!(updated.description, "Latte");
+        assert_eq!(updated.category, "Shopping");
+    }
+
+    #[test]
+    fn delete_transaction() {
+        let db = test_db();
+        let tx = db.add_transaction(NewTransaction {
+            amount: -100,
+            description: None,
+            category: None,
+            container_id: 1,
+        }).unwrap();
+
+        db.delete_transaction(tx.id).unwrap();
+        let transactions = db.get_transactions(1, None).unwrap();
+        assert!(transactions.is_empty());
+    }
+
+    #[test]
+    fn balance_calculations() {
+        let db = test_db();
+        db.add_transaction(NewTransaction {
+            amount: 10000,
+            description: Some("Salary".into()),
+            category: Some("Income".into()),
+            container_id: 1,
+        }).unwrap();
+        db.add_transaction(NewTransaction {
+            amount: -3000,
+            description: Some("Groceries".into()),
+            category: Some("Food & Dining".into()),
+            container_id: 1,
+        }).unwrap();
+
+        let monthly = db.get_monthly_balance(1).unwrap();
+        assert_eq!(monthly, 7000);
+
+        let all_time = db.get_all_time_balance(1).unwrap();
+        assert_eq!(all_time, 7000);
+    }
+
+    #[test]
+    fn container_isolation() {
+        let db = test_db();
+        let c2 = db.add_container("Business".into()).unwrap();
+
+        db.add_transaction(NewTransaction {
+            amount: 5000,
+            description: None,
+            category: None,
+            container_id: 1,
+        }).unwrap();
+        db.add_transaction(NewTransaction {
+            amount: 9000,
+            description: None,
+            category: None,
+            container_id: c2.id,
+        }).unwrap();
+
+        assert_eq!(db.get_all_time_balance(1).unwrap(), 5000);
+        assert_eq!(db.get_all_time_balance(c2.id).unwrap(), 9000);
+
+        let t1 = db.get_transactions(1, None).unwrap();
+        let t2 = db.get_transactions(c2.id, None).unwrap();
+        assert_eq!(t1.len(), 1);
+        assert_eq!(t2.len(), 1);
+    }
+
+    #[test]
+    fn add_and_delete_category() {
+        let db = test_db();
+        let before = db.get_categories().unwrap().len();
+
+        db.add_category("Custom".into()).unwrap();
+        let after = db.get_categories().unwrap();
+        assert_eq!(after.len(), before + 1);
+        assert!(after.contains(&"Custom".to_string()));
+
+        db.delete_category("Custom".into()).unwrap();
+        assert_eq!(db.get_categories().unwrap().len(), before);
+    }
+
+    #[test]
+    fn cannot_delete_default_category() {
+        let db = test_db();
+        let before = db.get_categories().unwrap().len();
+        db.delete_category("Food & Dining".into()).unwrap();
+        assert_eq!(db.get_categories().unwrap().len(), before);
+    }
+
+    #[test]
+    fn add_update_delete_container() {
+        let db = test_db();
+        let c = db.add_container("Savings".into()).unwrap();
+        assert_eq!(c.name, "Savings");
+        assert!(!c.is_default);
+
+        let updated = db.update_container(c.id, "Emergency Fund".into()).unwrap();
+        assert_eq!(updated.name, "Emergency Fund");
+
+        db.delete_container(c.id).unwrap();
+        let containers = db.get_containers().unwrap();
+        assert_eq!(containers.len(), 1);
+    }
+
+    #[test]
+    fn cannot_delete_default_container() {
+        let db = test_db();
+        let result = db.delete_container(1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn export_csv() {
+        let db = test_db();
+        db.add_transaction(NewTransaction {
+            amount: -1050,
+            description: Some("Coffee".into()),
+            category: Some("Food & Dining".into()),
+            container_id: 1,
+        }).unwrap();
+
+        let csv = db.export_transactions_csv(1).unwrap();
+        assert!(csv.contains("ID,Amount,Description,Category,Date"));
+        assert!(csv.contains("-10.50"));
+        assert!(csv.contains("Coffee"));
+    }
+
+    #[test]
+    fn parse_amount_various_formats() {
+        assert_eq!(Database::parse_amount("10.50").unwrap(), 1050);
+        assert_eq!(Database::parse_amount("-5.99").unwrap(), -599);
+        assert_eq!(Database::parse_amount("$100.00").unwrap(), 10000);
+        assert_eq!(Database::parse_amount("€25.50").unwrap(), 2550);
+        assert_eq!(Database::parse_amount("1,234.56").unwrap(), 123456);
+        assert!(Database::parse_amount("abc").is_err());
+    }
+
+    #[test]
+    fn parse_date_various_formats() {
+        let result = Database::parse_date("2025-06-15").unwrap();
+        assert!(result.starts_with("2025-06-15"));
+
+        let result = Database::parse_date("06/15/2025").unwrap();
+        assert!(result.contains("2025"));
+
+        assert!(Database::parse_date("not-a-date").is_err());
+    }
+
+    #[test]
+    fn import_csv() {
+        let db = test_db();
+        let csv = "Amount,Description,Category,Date\n-10.50,Coffee,Food & Dining,2025-01-15\n50.00,Refund,Income,2025-01-16\n";
+        let result = db.import_transactions_from_csv(
+            csv.into(), 1, 0, 1, 2, 3, true,
+        ).unwrap();
+
+        assert_eq!(result.success_count, 2);
+        assert_eq!(result.error_count, 0);
+    }
+
+    #[test]
+    fn import_csv_handles_bad_rows() {
+        let db = test_db();
+        let csv = "amt,desc,cat,date\nabc,Bad,Other,2025-01-01\n10.00,Good,Other,2025-01-01\n";
+        let result = db.import_transactions_from_csv(
+            csv.into(), 1, 0, 1, 2, 3, true,
+        ).unwrap();
+
+        assert_eq!(result.success_count, 1);
+        assert_eq!(result.error_count, 1);
+        assert!(result.errors[0].contains("Row 2"));
+    }
+
+    #[test]
+    fn available_months() {
+        let db = test_db();
+        db.add_transaction(NewTransaction {
+            amount: 1000,
+            description: None,
+            category: None,
+            container_id: 1,
+        }).unwrap();
+
+        let months = db.get_available_months(1).unwrap();
+        assert_eq!(months.len(), 1);
+
+        let current_month = chrono::Local::now().format("%Y-%m").to_string();
+        assert_eq!(months[0], current_month);
+    }
+
+    #[test]
+    fn category_totals_only_counts_expenses() {
+        let db = test_db();
+        db.add_transaction(NewTransaction {
+            amount: 10000,
+            description: Some("Salary".into()),
+            category: Some("Income".into()),
+            container_id: 1,
+        }).unwrap();
+        db.add_transaction(NewTransaction {
+            amount: -2000,
+            description: Some("Lunch".into()),
+            category: Some("Food & Dining".into()),
+            container_id: 1,
+        }).unwrap();
+
+        let totals = db.get_category_totals(1).unwrap();
+        assert_eq!(totals.len(), 1);
+        assert_eq!(totals[0].0, "Food & Dining");
+        assert_eq!(totals[0].1, -2000);
+    }
+}

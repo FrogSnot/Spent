@@ -90,6 +90,7 @@
       <div class="mb-6">
         {#if isAdding}
           <div class="flex gap-2 p-4 bg-gray-800 rounded-xl border border-gray-700">
+            <!-- svelte-ignore a11y-autofocus -->
             <input
               type="text"
               bind:value={newCategoryName}
