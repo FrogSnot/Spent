@@ -6,7 +6,7 @@ Minimalist personal finance tracker for Linux desktop with cross-platform suppor
 
 **[View More Screenshots](src-tauri/icons/Media)**
 
-> **Note:** Version 1.0.0 is "feature-complete" but has primarily been tested on Arch Linux. If you encounter issues on other distros or OSs, please open an Issue!
+> Spent is feature-complete and stable. It has primarily been tested on Arch Linux. If you encounter issues on other distros or OSs, please open an Issue!
 
 [![AUR votes](https://img.shields.io/aur/votes/spent?logo=arch-linux&style=flat-square&color=blue)](https://aur.archlinux.org/packages/spent)
 [![GitHub stars](https://img.shields.io/github/stars/FrogSnot/Spent?style=flat-square&color=yellow)](https://github.com/FrogSnot/Spent)

@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-22.04
+          - platform: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             artifact_name: spent_amd64.deb
             artifact_path: src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
@@ -51,7 +51,7 @@ jobs:
           rustup target add ${{ matrix.target }}
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -97,7 +97,7 @@ jobs:
         run: npm run tauri build -- --target ${{ matrix.target }}
 
       - name: Upload .deb artifact (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -106,7 +106,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload .AppImage artifact (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
