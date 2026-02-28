@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 
 export interface CurrencySettings {
   code: string;
@@ -36,26 +36,66 @@ currencySettings.subscribe(value => {
   }
 });
 
-export const currencyOptions = [
-  { code: 'USD', symbol: '$', name: 'US Dollar', position: 'before' as const, locale: 'en-US' },
-  { code: 'EUR', symbol: '€', name: 'Euro', position: 'after' as const, locale: 'de-DE' },
-  { code: 'GBP', symbol: '£', name: 'British Pound', position: 'before' as const, locale: 'en-GB' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', position: 'before' as const, locale: 'ja-JP' },
-  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', position: 'before' as const, locale: 'en-CA' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', position: 'before' as const, locale: 'en-AU' },
-  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc', position: 'before' as const, locale: 'de-CH' },
-  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', position: 'before' as const, locale: 'zh-CN' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee', position: 'before' as const, locale: 'en-IN' },
-  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', position: 'before' as const, locale: 'pt-BR' },
-  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso', position: 'before' as const, locale: 'es-MX' },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand', position: 'before' as const, locale: 'en-ZA' },
-  { code: 'KRW', symbol: '₩', name: 'South Korean Won', position: 'before' as const, locale: 'ko-KR' },
-  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', position: 'after' as const, locale: 'sv-SE' },
-  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone', position: 'after' as const, locale: 'nb-NO' },
-  { code: 'DKK', symbol: 'kr', name: 'Danish Krone', position: 'after' as const, locale: 'da-DK' },
-  { code: 'PLN', symbol: 'zł', name: 'Polish Złoty', position: 'after' as const, locale: 'pl-PL' },
-  { code: 'RUB', symbol: '₽', name: 'Russian Ruble', position: 'after' as const, locale: 'ru-RU' },
+export interface CurrencyOption {
+  code: string;
+  symbol: string;
+  name: string;
+  position: 'before' | 'after';
+  locale: string;
+  custom?: boolean;
+}
+
+export const currencyOptions: CurrencyOption[] = [
+  { code: 'USD', symbol: '$', name: 'US Dollar', position: 'before', locale: 'en-US' },
+  { code: 'EUR', symbol: '€', name: 'Euro', position: 'after', locale: 'de-DE' },
+  { code: 'GBP', symbol: '£', name: 'British Pound', position: 'before', locale: 'en-GB' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', position: 'before', locale: 'ja-JP' },
+  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar', position: 'before', locale: 'en-CA' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar', position: 'before', locale: 'en-AU' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc', position: 'before', locale: 'de-CH' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan', position: 'before', locale: 'zh-CN' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', position: 'before', locale: 'en-IN' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real', position: 'before', locale: 'pt-BR' },
+  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso', position: 'before', locale: 'es-MX' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand', position: 'before', locale: 'en-ZA' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won', position: 'before', locale: 'ko-KR' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', position: 'after', locale: 'sv-SE' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone', position: 'after', locale: 'nb-NO' },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone', position: 'after', locale: 'da-DK' },
+  { code: 'PLN', symbol: 'zł', name: 'Polish Złoty', position: 'after', locale: 'pl-PL' },
+  { code: 'RUB', symbol: '₽', name: 'Russian Ruble', position: 'after', locale: 'ru-RU' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar', position: 'before', locale: 'en-SG' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar', position: 'before', locale: 'zh-HK' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar', position: 'before', locale: 'en-NZ' },
+  { code: 'TRY', symbol: '₺', name: 'Turkish Lira', position: 'before', locale: 'tr-TR' },
 ];
+
+function loadCustomCurrencies(): CurrencyOption[] {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('spent_custom_currencies');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {
+        console.error('Failed to parse custom currencies:', e);
+      }
+    }
+  }
+  return [];
+}
+
+export const customCurrencies = writable<CurrencyOption[]>(loadCustomCurrencies());
+
+customCurrencies.subscribe(value => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('spent_custom_currencies', JSON.stringify(value));
+  }
+});
+
+export const allCurrencyOptions = derived(customCurrencies, $custom => [
+  ...currencyOptions,
+  ...$custom,
+]);
 
 export function formatCurrency(cents: number, settings: CurrencySettings): string {
   const dollars = Math.abs(cents) / 100;

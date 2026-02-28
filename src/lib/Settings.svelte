@@ -2,8 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
-  import { X, Settings as SettingsIcon, DollarSign, Globe, Check } from 'lucide-svelte';
-  import { currencySettings, currencyOptions, type CurrencySettings } from './stores';
+  import { X, Settings as SettingsIcon, DollarSign, Globe, Check, Plus, Trash2 } from 'lucide-svelte';
+  import { currencySettings, customCurrencies, allCurrencyOptions, type CurrencySettings, type CurrencyOption } from './stores';
   import Dropdown from './Dropdown.svelte';
 
   const dispatch = createEventDispatcher();
@@ -11,27 +11,75 @@
   let selectedCurrency = $currencySettings.code;
   let activeTab: 'currency' | 'general' = 'currency';
 
+  let showCustomForm = false;
+  let newCurrency: Omit<CurrencyOption, 'custom'> & { custom: true } = {
+    name: '',
+    code: '',
+    symbol: '',
+    position: 'before',
+    locale: 'en-US',
+    custom: true,
+  };
+  let customError = '';
+
   function handleCurrencyChange(event: CustomEvent) {
     const code = event.detail.value;
-    const currency = currencyOptions.find(c => c.code === code);
-    
+    const currency = $allCurrencyOptions.find(c => c.code === code);
     if (currency) {
       currencySettings.set({
         code: currency.code,
         symbol: currency.symbol,
         position: currency.position,
-        locale: currency.locale
+        locale: currency.locale,
       });
       selectedCurrency = code;
     }
   }
 
-  $: currencyDropdownOptions = currencyOptions.map(c => ({
+  const positionOptions = [
+    { value: 'before', label: 'Before amount' },
+    { value: 'after', label: 'After amount' },
+  ];
+
+  function handlePositionChange(event: CustomEvent) {
+    newCurrency.position = event.detail.value;
+  }
+
+  function addCustomCurrency() {
+    const code = newCurrency.code.trim().toUpperCase();
+    const name = newCurrency.name.trim();
+    const symbol = newCurrency.symbol.trim();
+    if (!code || !name || !symbol) {
+      customError = 'Name, code, and symbol are required.';
+      return;
+    }
+    if ($allCurrencyOptions.some(c => c.code === code)) {
+      customError = `Currency code "${code}" already exists.`;
+      return;
+    }
+    customCurrencies.update(list => [
+      ...list,
+      { name, code, symbol, position: newCurrency.position, locale: newCurrency.locale || 'en-US', custom: true },
+    ]);
+    newCurrency = { name: '', code: '', symbol: '', position: 'before', locale: 'en-US', custom: true };
+    customError = '';
+    showCustomForm = false;
+  }
+
+  function removeCustomCurrency(code: string) {
+    customCurrencies.update(list => list.filter(c => c.code !== code));
+    if (selectedCurrency === code) {
+      selectedCurrency = 'USD';
+      currencySettings.set({ code: 'USD', symbol: '$', position: 'before', locale: 'en-US' });
+    }
+  }
+
+  $: currencyDropdownOptions = $allCurrencyOptions.map(c => ({
     value: c.code,
-    label: `${c.symbol} ${c.name} (${c.code})`
+    label: `${c.symbol} ${c.name} (${c.code})`,
   }));
 
-  $: selectedCurrencyOption = currencyOptions.find(c => c.code === selectedCurrency);
+  $: selectedCurrencyOption = $allCurrencyOptions.find(c => c.code === selectedCurrency);
 </script>
 
 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" in:fade={{ duration: 200 }}>
@@ -152,6 +200,105 @@
                     </div>
                   </div>
                 </div>
+              {/if}
+
+              {#if $customCurrencies.length > 0}
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+                  <h4 class="text-sm font-semibold text-gray-300 mb-3">Custom Currencies</h4>
+                  <div class="space-y-2">
+                    {#each $customCurrencies as c}
+                      <div class="flex items-center justify-between px-3 py-2 bg-gray-900 rounded-lg">
+                        <span class="text-sm text-white">{c.symbol} {c.name} <span class="text-gray-500">({c.code})</span></span>
+                        <button
+                          on:click={() => removeCustomCurrency(c.code)}
+                          class="p-1 hover:text-red-400 text-gray-500 transition-colors"
+                          title="Remove"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+
+              {#if showCustomForm}
+                <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-3">
+                  <h4 class="text-sm font-semibold text-gray-300">Add Custom Currency</h4>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label for="custom-name" class="block text-xs text-gray-400 mb-1">Name</label>
+                      <input
+                        id="custom-name"
+                        bind:value={newCurrency.name}
+                        placeholder="e.g. My Currency"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label for="custom-code" class="block text-xs text-gray-400 mb-1">Code</label>
+                      <input
+                        id="custom-code"
+                        bind:value={newCurrency.code}
+                        placeholder="e.g. XYZ"
+                        maxlength="8"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white uppercase focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label for="custom-symbol" class="block text-xs text-gray-400 mb-1">Symbol</label>
+                      <input
+                        id="custom-symbol"
+                        bind:value={newCurrency.symbol}
+                        placeholder="e.g. ¤"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <!-- svelte-ignore a11y-label-has-associated-control -->
+                      <label class="block text-xs text-gray-400 mb-1">Symbol position</label>
+                      <Dropdown
+                        value={newCurrency.position}
+                        options={positionOptions}
+                        on:change={handlePositionChange}
+                      />
+                    </div>
+                    <div class="col-span-2">
+                      <label for="custom-locale" class="block text-xs text-gray-400 mb-1">Locale <span class="text-gray-600">(optional, e.g. en-US)</span></label>
+                      <input
+                        id="custom-locale"
+                        bind:value={newCurrency.locale}
+                        placeholder="en-US"
+                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  {#if customError}
+                    <p class="text-xs text-red-400">{customError}</p>
+                  {/if}
+                  <div class="flex gap-2 pt-1">
+                    <button
+                      on:click={addCustomCurrency}
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg font-semibold transition-all"
+                    >
+                      Save
+                    </button>
+                    <button
+                      on:click={() => { showCustomForm = false; customError = ''; }}
+                      class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              {:else}
+                <button
+                  on:click={() => showCustomForm = true}
+                  class="flex items-center gap-2 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                >
+                  <Plus size={16} />
+                  Add custom currency
+                </button>
               {/if}
 
               <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
