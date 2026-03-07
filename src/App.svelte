@@ -397,7 +397,7 @@
           class="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 transition-colors text-xs hover:underline cursor-pointer"
         >
           <Github size={14} />
-          <span>v1.1.9</span>
+          <span>v1.2.1</span>
         </button>
         <button
           on:click={handleExport}

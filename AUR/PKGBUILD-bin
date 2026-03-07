@@ -4,7 +4,7 @@ _pkgname=Spent
 pkgname=${_pkgname,,}-bin
 pkgdesc="Minimalist personal finance tracker for Linux desktop"
 
-pkgver=1.1.9
+pkgver=1.2.1
 pkgrel=2
 _pkgvername=v${pkgver}
 
