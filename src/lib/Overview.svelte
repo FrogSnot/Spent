@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { currencySettings, formatCurrency as formatCurrencyHelper } from './stores';
+  import { fade } from 'svelte/transition';
+  import { currencySettings, appSettings, formatCurrency as formatCurrencyHelper } from './stores';
   import { 
     TrendingDown, 
     TrendingUp, 
@@ -27,10 +28,10 @@
     return formatCurrencyHelper(cents, $currencySettings);
   };
 
-  function formatDate(dateString: string): string {
+  function formatDateImpl(dateString: string, month: string, dateFormat: string): string {
     const date = new Date(dateString);
-    const [selYear, selMonth] = selectedMonth.split('-').map(Number);
-    const referenceDate = new Date(selYear, selMonth - 1 + 1, 0); // last day of selected month
+    const [selYear, selMo] = month.split('-').map(Number);
+    const referenceDate = new Date(selYear, selMo, 0);
     const now = new Date();
     const anchor = now < referenceDate ? now : referenceDate;
     const diffDays = Math.floor((anchor.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
@@ -39,11 +40,19 @@
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
     
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
+    if (dateFormat === 'YYYY-MM-DD') {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    const locale = dateFormat === 'DD/MM/YYYY' ? 'en-GB' : 'en-US';
+    return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(date);
   }
+
+  $: formatDate = (dateString: string): string => {
+    return formatDateImpl(dateString, selectedMonth, $appSettings.dateFormat);
+  };
 
   function formatTime(dateString: string): string {
     const date = new Date(dateString);
@@ -60,16 +69,18 @@
     description: string;
     category: string;
     date: string;
-  }>) {
-    const [selYear, selMonth] = selectedMonth.split('-').map(Number);
-    const lastDayOfMonth = new Date(selYear, selMonth, 0);
+  }>, weekStart: 'sunday' | 'monday') {
+    const [selYear, selMo] = selectedMonth.split('-').map(Number);
+    const lastDayOfMonth = new Date(selYear, selMo, 0);
     const now = new Date();
     const anchor = now < lastDayOfMonth ? now : lastDayOfMonth;
     const today = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const lastWeek = new Date(today);
-    lastWeek.setDate(lastWeek.getDate() - 7);
+    const weekStartDate = new Date(today);
+    const dayOfWeek = weekStartDate.getDay();
+    const offset = weekStart === 'monday' ? (dayOfWeek === 0 ? 6 : dayOfWeek - 1) : dayOfWeek;
+    weekStartDate.setDate(weekStartDate.getDate() - offset);
 
     const groups: { [key: string]: typeof txList } = {
       Today: [],
@@ -86,7 +97,7 @@
         groups.Today.push(t);
       } else if (tDay.getTime() === yesterday.getTime()) {
         groups.Yesterday.push(t);
-      } else if (tDate >= lastWeek) {
+      } else if (tDay >= weekStartDate) {
         groups['This Week'].push(t);
       } else {
         groups.Older.push(t);
@@ -118,7 +129,24 @@
     return new Date(y, m, 0).getDate();
   })();
   $: dailyAverage = transactionCount > 0 ? totalSpent / daysInMonth : 0;
-  $: groupedTransactions = groupTransactions(transactions);
+  $: groupedTransactions = groupTransactions(transactions, $appSettings.weekStart);
+
+  let pendingDeleteId: number | null = null;
+
+  function handleDelete(id: number) {
+    if ($appSettings.confirmBeforeDelete) {
+      pendingDeleteId = id;
+    } else {
+      dispatch('delete', { id });
+    }
+  }
+
+  function confirmDelete() {
+    if (pendingDeleteId !== null) {
+      dispatch('delete', { id: pendingDeleteId });
+      pendingDeleteId = null;
+    }
+  }
 
   function formatMonthLabel(month: string): string {
     const [year, monthNum] = month.split('-');
@@ -256,7 +284,7 @@
                         </svg>
                       </button>
                       <button
-                        on:click={() => dispatch('delete', { id: transaction.id })}
+                        on:click={() => handleDelete(transaction.id)}
                         class="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 hover:scale-110 rounded-lg text-red-400 transition-all duration-200"
                         title="Delete"
                       >
@@ -317,3 +345,26 @@
     </div>
   </div>
 </div>
+
+{#if pendingDeleteId !== null}
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4" in:fade={{ duration: 150 }}>
+    <div class="bg-gray-900 rounded-xl w-full max-w-sm border border-gray-700 shadow-2xl p-6 space-y-4">
+      <h3 class="text-lg font-bold text-white">Delete Transaction</h3>
+      <p class="text-sm text-gray-400">Are you sure? This action cannot be undone.</p>
+      <div class="flex gap-3 pt-2">
+        <button
+          on:click={confirmDelete}
+          class="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-semibold transition-colors"
+        >
+          Delete
+        </button>
+        <button
+          on:click={() => (pendingDeleteId = null)}
+          class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2.5 rounded-lg font-semibold transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

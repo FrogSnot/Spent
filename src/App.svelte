@@ -16,6 +16,7 @@
   import Settings from './lib/Settings.svelte';
   import Dropdown from './lib/Dropdown.svelte';
   import Toast from './lib/Toast.svelte';
+  import { appSettings } from './lib/stores';
 
   interface Transaction {
     id: number;
@@ -96,13 +97,14 @@
     if (!selectedContainer) return;
     
     try {
+      const txLimit = $appSettings.transactionLimit || null;
       if (selectedMonth === getCurrentMonth()) {
         monthlyBalance = await invoke<number>('get_monthly_balance', { containerId: selectedContainer.id });
-        transactions = await invoke<Transaction[]>('get_transactions', { containerId: selectedContainer.id, limit: 50 });
+        transactions = await invoke<Transaction[]>('get_transactions', { containerId: selectedContainer.id, limit: txLimit });
         categoryTotals = await invoke<Array<[string, number]>>('get_category_totals', { containerId: selectedContainer.id });
       } else {
         monthlyBalance = await invoke<number>('get_balance_for_month', { containerId: selectedContainer.id, month: selectedMonth });
-        transactions = await invoke<Transaction[]>('get_transactions_for_month', { containerId: selectedContainer.id, month: selectedMonth, limit: 50 });
+        transactions = await invoke<Transaction[]>('get_transactions_for_month', { containerId: selectedContainer.id, month: selectedMonth, limit: txLimit });
         categoryTotals = await invoke<Array<[string, number]>>('get_category_totals_for_month', { containerId: selectedContainer.id, month: selectedMonth });
       }
       allTimeBalance = await invoke<number>('get_all_time_balance', { containerId: selectedContainer.id });
@@ -445,7 +447,23 @@
 
   {#if showSettings}
     <Settings
-      on:close={() => (showSettings = false)}
+      on:close={() => {
+        showSettings = false;
+        loadData();
+      }}
+      on:dataCleared={async () => {
+        showSettings = false;
+        selectedContainer = null;
+        _lastContainerId = null;
+        _lastMonth = '';
+        selectedMonth = getCurrentMonth();
+        await loadContainers();
+        await loadAvailableMonths();
+        await loadData();
+        toastMessage = 'All data has been cleared.';
+        toastType = 'success';
+        showToast = true;
+      }}
     />
   {/if}
 

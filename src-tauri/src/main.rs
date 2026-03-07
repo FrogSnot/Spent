@@ -160,6 +160,16 @@ fn import_csv(
     }))
 }
 
+#[tauri::command]
+fn get_db_path(db: tauri::State<Arc<Database>>) -> String {
+    db.get_db_path()
+}
+
+#[tauri::command]
+fn clear_all_data(db: tauri::State<Arc<Database>>) -> Result<(), String> {
+    db.clear_all_data().map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -195,7 +205,9 @@ fn main() {
             add_container,
             delete_container,
             update_container,
-            import_csv
+            import_csv,
+            get_db_path,
+            clear_all_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -32,11 +32,12 @@ pub struct NewTransaction {
 
 pub struct Database {
     conn: Mutex<Connection>,
+    db_path: String,
 }
 
 impl Database {
     pub fn new(db_path: PathBuf) -> Result<Self> {
-        let conn = Connection::open(db_path)?;
+        let conn = Connection::open(&db_path)?;
         
         conn.execute(
             "CREATE TABLE IF NOT EXISTS containers (
@@ -114,6 +115,7 @@ impl Database {
 
         Ok(Database {
             conn: Mutex::new(conn),
+            db_path: db_path.to_string_lossy().to_string(),
         })
     }
 
@@ -465,6 +467,17 @@ impl Database {
         )?;
 
         Ok(container)
+    }
+
+    pub fn get_db_path(&self) -> String {
+        self.db_path.clone()
+    }
+
+    pub fn clear_all_data(&self) -> Result<()> {
+        let conn = self.conn.lock().map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?;
+        conn.execute("DELETE FROM transactions", [])?;
+        conn.execute("DELETE FROM containers WHERE is_default = 0", [])?;
+        Ok(())
     }
 }
 

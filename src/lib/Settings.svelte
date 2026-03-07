@@ -1,15 +1,94 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { fade, scale } from 'svelte/transition';
   import { backOut } from 'svelte/easing';
-  import { X, Settings as SettingsIcon, DollarSign, Globe, Check, Plus, Trash2 } from 'lucide-svelte';
-  import { currencySettings, customCurrencies, allCurrencyOptions, type CurrencySettings, type CurrencyOption } from './stores';
+  import { invoke } from '@tauri-apps/api/core';
+  import { open } from '@tauri-apps/plugin-shell';
+  import { X, Settings as SettingsIcon, DollarSign, Globe, Check, Plus, Trash2, Database, Info, Keyboard, Copy, AlertTriangle, ExternalLink } from 'lucide-svelte';
+  import { currencySettings, customCurrencies, allCurrencyOptions, appSettings, type CurrencySettings, type CurrencyOption, type AppSettings } from './stores';
   import Dropdown from './Dropdown.svelte';
 
   const dispatch = createEventDispatcher();
 
   let selectedCurrency = $currencySettings.code;
-  let activeTab: 'currency' | 'general' = 'currency';
+  let activeTab: 'currency' | 'general' | 'data' | 'about' = 'currency';
+
+  let categories: string[] = [];
+  let dbPath = '';
+  let clearConfirmText = '';
+  let isClearing = false;
+  let copiedPath = false;
+
+  const dateFormatOptions = [
+    { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY (03/07/2026)' },
+    { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (07/03/2026)' },
+    { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (2026-03-07)' },
+  ];
+
+  const limitOptions = [
+    { value: 25, label: '25' },
+    { value: 50, label: '50' },
+    { value: 100, label: '100' },
+    { value: 200, label: '200' },
+    { value: 0, label: 'All' },
+  ];
+
+  async function loadCategories() {
+    try {
+      categories = await invoke<string[]>('get_categories');
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  }
+
+  async function loadDbPath() {
+    try {
+      dbPath = await invoke<string>('get_db_path');
+    } catch (error) {
+      console.error('Failed to get DB path:', error);
+    }
+  }
+
+  async function handleClearAllData() {
+    if (clearConfirmText !== 'DELETE') return;
+    isClearing = true;
+    try {
+      await invoke('clear_all_data');
+      clearConfirmText = '';
+      dispatch('dataCleared');
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+    } finally {
+      isClearing = false;
+    }
+  }
+
+  async function copyDbPath() {
+    try {
+      await navigator.clipboard.writeText(dbPath);
+      copiedPath = true;
+      setTimeout(() => copiedPath = false, 2000);
+    } catch (error) {
+      console.error('Failed to copy path:', error);
+    }
+  }
+
+  function updateSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+    appSettings.update(s => ({ ...s, [key]: value }));
+  }
+
+  async function openGitHub() {
+    try {
+      await open('https://github.com/FrogSnot/Spent');
+    } catch (error) {
+      console.error('Failed to open GitHub:', error);
+    }
+  }
+
+  onMount(() => {
+    loadCategories();
+    loadDbPath();
+  });
 
   let showCustomForm = false;
   let newCurrency: Omit<CurrencyOption, 'custom'> & { custom: true } = {
@@ -124,6 +203,26 @@
           >
             <Globe size={18} />
             <span class="text-sm font-medium">General</span>
+          </button>
+          
+          <button
+            on:click={() => activeTab = 'data'}
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {activeTab === 'data'
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
+          >
+            <Database size={18} />
+            <span class="text-sm font-medium">Data</span>
+          </button>
+          
+          <button
+            on:click={() => activeTab = 'about'}
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all {activeTab === 'about'
+              ? 'bg-indigo-600 text-white'
+              : 'text-gray-400 hover:text-white hover:bg-gray-800'}"
+          >
+            <Info size={18} />
+            <span class="text-sm font-medium">About</span>
           </button>
         </nav>
       </div>
@@ -319,18 +418,218 @@
           <div class="space-y-6">
             <div>
               <h3 class="text-lg font-bold text-white mb-1">General Settings</h3>
-              <p class="text-sm text-gray-400">App preferences and configurations</p>
+              <p class="text-sm text-gray-400">Display preferences and behavior</p>
+            </div>
+
+            <div class="space-y-4">
+              <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Display</h4>
+
+              <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-5">
+                <div>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <label class="block text-sm font-semibold text-gray-300 mb-1">Date Format</label>
+                  <p class="text-xs text-gray-500 mb-2">How dates appear throughout the app</p>
+                  <Dropdown
+                    value={$appSettings.dateFormat}
+                    options={dateFormatOptions}
+                    on:change={(e) => updateSetting('dateFormat', e.detail.value)}
+                  />
+                </div>
+
+                <div>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <label class="block text-sm font-semibold text-gray-300 mb-1">Week Starts On</label>
+                  <p class="text-xs text-gray-500 mb-2">First day of the week for grouping</p>
+                  <div class="flex gap-2">
+                    <button
+                      on:click={() => updateSetting('weekStart', 'sunday')}
+                      class="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all {$appSettings.weekStart === 'sunday'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                        : 'bg-gray-900 text-gray-400 hover:bg-gray-700 border border-gray-700'}"
+                    >
+                      Sunday
+                    </button>
+                    <button
+                      on:click={() => updateSetting('weekStart', 'monday')}
+                      class="flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all {$appSettings.weekStart === 'monday'
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                        : 'bg-gray-900 text-gray-400 hover:bg-gray-700 border border-gray-700'}"
+                    >
+                      Monday
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Behavior</h4>
+
+              <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-5">
+                <div>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <label class="block text-sm font-semibold text-gray-300 mb-1">Default Category</label>
+                  <p class="text-xs text-gray-500 mb-2">Pre-selected when adding new transactions</p>
+                  <Dropdown
+                    value={$appSettings.defaultCategory}
+                    options={categories.map(c => ({ value: c, label: c }))}
+                    on:change={(e) => updateSetting('defaultCategory', e.detail.value)}
+                  />
+                </div>
+
+                <div>
+                  <!-- svelte-ignore a11y-label-has-associated-control -->
+                  <label class="block text-sm font-semibold text-gray-300 mb-1">Transaction Limit</label>
+                  <p class="text-xs text-gray-500 mb-2">Max recent transactions shown on the dashboard</p>
+                  <div class="flex gap-2">
+                    {#each limitOptions as opt}
+                      <button
+                        on:click={() => updateSetting('transactionLimit', opt.value)}
+                        class="flex-1 px-3 py-2.5 rounded-lg font-medium text-sm transition-all {$appSettings.transactionLimit === opt.value
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                          : 'bg-gray-900 text-gray-400 hover:bg-gray-700 border border-gray-700'}"
+                      >
+                        {opt.label}
+                      </button>
+                    {/each}
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <!-- svelte-ignore a11y-label-has-associated-control -->
+                    <label class="block text-sm font-semibold text-gray-300">Confirm Before Delete</label>
+                    <p class="text-xs text-gray-500 mt-0.5">Ask for confirmation when deleting transactions</p>
+                  </div>
+                  <button
+                    on:click={() => updateSetting('confirmBeforeDelete', !$appSettings.confirmBeforeDelete)}
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {$appSettings.confirmBeforeDelete ? 'bg-indigo-600' : 'bg-gray-700'}"
+                    role="switch"
+                    aria-checked={$appSettings.confirmBeforeDelete}
+                  >
+                    <span
+                      class="inline-block h-4 w-4 rounded-full bg-white transition-transform {$appSettings.confirmBeforeDelete ? 'translate-x-6' : 'translate-x-1'}"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        {:else if activeTab === 'data'}
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-lg font-bold text-white mb-1">Data Management</h3>
+              <p class="text-sm text-gray-400">Database and storage information</p>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 space-y-3">
+              <h4 class="text-sm font-semibold text-gray-300">Database Location</h4>
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-gray-900 rounded-lg px-4 py-2.5 text-sm text-gray-400 font-mono truncate border border-gray-700">
+                  {dbPath || 'Loading...'}
+                </div>
+                <button
+                  on:click={copyDbPath}
+                  class="p-2.5 rounded-lg transition-all {copiedPath ? 'bg-green-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-700 border border-gray-700'}"
+                  title="Copy path"
+                >
+                  {#if copiedPath}
+                    <Check size={16} />
+                  {:else}
+                    <Copy size={16} />
+                  {/if}
+                </button>
+              </div>
+              <p class="text-xs text-gray-600">All your data is stored locally in this SQLite file.</p>
+            </div>
+
+            <div class="bg-red-500/5 rounded-xl p-5 border border-red-500/20 space-y-4">
+              <div class="flex items-center gap-3">
+                <AlertTriangle size={20} class="text-red-400 flex-shrink-0" />
+                <div>
+                  <h4 class="text-sm font-semibold text-red-400">Danger Zone</h4>
+                  <p class="text-xs text-gray-500 mt-0.5">This action cannot be undone</p>
+                </div>
+              </div>
+              <p class="text-sm text-gray-400">Delete all transactions and custom containers. Default categories and the default container will be preserved.</p>
+              <div class="space-y-3">
+                <div>
+                  <label for="clear-confirm" class="block text-xs text-gray-500 mb-1">Type <span class="text-red-400 font-mono font-bold">DELETE</span> to confirm</label>
+                  <input
+                    id="clear-confirm"
+                    type="text"
+                    bind:value={clearConfirmText}
+                    placeholder="Type DELETE to confirm"
+                    class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-red-500 font-mono"
+                    autocomplete="off"
+                  />
+                </div>
+                <button
+                  on:click={handleClearAllData}
+                  disabled={clearConfirmText !== 'DELETE' || isClearing}
+                  class="w-full px-4 py-2.5 rounded-lg font-semibold text-sm transition-all {clearConfirmText === 'DELETE' && !isClearing
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-gray-800 text-gray-600 cursor-not-allowed'}"
+                >
+                  {isClearing ? 'Clearing...' : 'Clear All Data'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+        {:else if activeTab === 'about'}
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-lg font-bold text-white mb-1">About Spent</h3>
+              <p class="text-sm text-gray-400">Version and app information</p>
             </div>
 
             <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
-              <div class="text-center py-8">
-                <div class="inline-flex p-4 bg-gray-700 rounded-full mb-4">
-                  <Globe size={32} class="text-gray-500" />
+              <div class="flex items-center gap-4">
+                <div class="p-3 bg-indigo-600/20 rounded-xl">
+                  <SettingsIcon size={28} class="text-indigo-400" />
                 </div>
-                <p class="text-gray-400">More settings coming soon...</p>
-                <p class="text-gray-600 text-sm mt-2">Future options: themes, date formats, backup settings, etc.</p>
+                <div>
+                  <h4 class="text-lg font-bold text-white">Spent</h4>
+                  <p class="text-sm text-gray-400">v1.1.9</p>
+                  <p class="text-xs text-gray-600 mt-0.5">Minimalist, local-first finance tracker</p>
+                </div>
+              </div>
+              <div class="mt-4 pt-4 border-t border-gray-700 text-center text-xs">
+                <div>
+                  <p class="text-gray-500">Made with love by FrogSnot ;)</p>
+                </div>
               </div>
             </div>
+
+            <div class="bg-gray-800 rounded-xl p-5 border border-gray-700">
+              <div class="flex items-center gap-2 mb-4">
+                <Keyboard size={16} class="text-gray-400" />
+                <h4 class="text-sm font-semibold text-gray-300">Keyboard Shortcuts</h4>
+              </div>
+              <div class="space-y-2.5">
+                {#each [
+                  { keys: 'Ctrl + N', action: 'Quick add transaction' },
+                  { keys: 'Ctrl + K', action: 'Open command palette' },
+                  { keys: 'Ctrl + Enter', action: 'Submit form' },
+                  { keys: 'Escape', action: 'Close dialogs' },
+                ] as shortcut}
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-400">{shortcut.action}</span>
+                    <kbd class="px-2.5 py-1 bg-gray-900 border border-gray-700 rounded-md text-xs text-gray-300 font-mono">{shortcut.keys}</kbd>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+            <button
+              on:click={openGitHub}
+              class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-gray-300 text-sm font-medium transition-all"
+            >
+              <ExternalLink size={16} />
+              View on GitHub
+            </button>
           </div>
         {/if}
       </div>

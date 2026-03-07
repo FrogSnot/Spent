@@ -5,13 +5,13 @@
   import { invoke } from '@tauri-apps/api/core';
   import { X, DollarSign, Plus, Trash2 } from 'lucide-svelte';
   import Dropdown from './Dropdown.svelte';
-  import { currencySettings } from './stores';
+  import { currencySettings, appSettings } from './stores';
 
   const dispatch = createEventDispatcher();
 
   let amount = '';
   let description = '';
-  let category = 'Other';
+  let category = $appSettings.defaultCategory;
   let transactionType: 'expense' | 'income' = 'expense';
   let categories: string[] = [];
   let showAddCategory = false;
@@ -80,7 +80,7 @@
 
     amount = '';
     description = '';
-    category = 'Other';
+    category = $appSettings.defaultCategory;
     transactionType = 'expense';
   }
 

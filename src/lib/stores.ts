@@ -112,3 +112,41 @@ export function formatCurrency(cents: number, settings: CurrencySettings): strin
     return `${sign}${formatted} ${settings.symbol}`;
   }
 }
+
+export interface AppSettings {
+  dateFormat: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
+  weekStart: 'sunday' | 'monday';
+  transactionLimit: number;
+  defaultCategory: string;
+  confirmBeforeDelete: boolean;
+}
+
+const defaultAppSettings: AppSettings = {
+  dateFormat: 'MM/DD/YYYY',
+  weekStart: 'sunday',
+  transactionLimit: 50,
+  defaultCategory: 'Other',
+  confirmBeforeDelete: true,
+};
+
+function loadAppSettings(): AppSettings {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('spent_app_settings');
+    if (stored) {
+      try {
+        return { ...defaultAppSettings, ...JSON.parse(stored) };
+      } catch (e) {
+        console.error('Failed to parse app settings:', e);
+      }
+    }
+  }
+  return defaultAppSettings;
+}
+
+export const appSettings = writable<AppSettings>(loadAppSettings());
+
+appSettings.subscribe(value => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('spent_app_settings', JSON.stringify(value));
+  }
+});
