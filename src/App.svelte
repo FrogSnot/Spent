@@ -54,6 +54,11 @@
   let toastMessage = '';
   let toastType: 'success' | 'error' | 'info' | 'warning' = 'info';
   let showToast = false;
+  let showSurveyPrompt = false;
+
+  const SURVEY_KEY = 'spent_survey_dismissed';
+  const USAGE_KEY = 'spent_usage_seconds';
+  const SURVEY_THRESHOLD = 30 * 60;
 
   function getCurrentMonth() {
     const now = new Date();
@@ -288,6 +293,12 @@
     }
   }
 
+  function dismissSurvey(accepted: boolean) {
+    showSurveyPrompt = false;
+    localStorage.setItem(SURVEY_KEY, 'true');
+    if (accepted) open('https://tally.so/r/RG45B4');
+  }
+
   onMount(() => {
     loadContainers();
     loadAvailableMonths();
@@ -295,8 +306,29 @@
     
     const handleKeydownEvent = (event: KeyboardEvent) => handleKeydown(event);
     window.addEventListener('keydown', handleKeydownEvent);
+
+    // Survey usage tracker
+    let usageInterval: ReturnType<typeof setInterval> | null = null;
+    if (!localStorage.getItem(SURVEY_KEY)) {
+      let elapsed = parseInt(localStorage.getItem(USAGE_KEY) || '0', 10);
+      if (elapsed >= SURVEY_THRESHOLD) {
+        showSurveyPrompt = true;
+      } else {
+        usageInterval = setInterval(() => {
+          elapsed += 10;
+          localStorage.setItem(USAGE_KEY, String(elapsed));
+          if (elapsed >= SURVEY_THRESHOLD) {
+            showSurveyPrompt = true;
+            if (usageInterval) clearInterval(usageInterval);
+          }
+        }, 10_000);
+      }
+    }
     
-    return () => window.removeEventListener('keydown', handleKeydownEvent);
+    return () => {
+      window.removeEventListener('keydown', handleKeydownEvent);
+      if (usageInterval) clearInterval(usageInterval);
+    };
   });
 </script>
 
@@ -473,5 +505,27 @@
       type={toastType}
       onClose={() => (showToast = false)}
     />
+  {/if}
+
+  {#if showSurveyPrompt}
+    <div class="fixed bottom-5 right-5 z-50 animate-fade-in">
+      <div class="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-4 max-w-xs">
+        <p class="text-sm text-gray-300">Got a minute for a quick survey?</p>
+        <div class="flex gap-2 mt-3">
+          <button
+            on:click={() => dismissSurvey(true)}
+            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            Sure!
+          </button>
+          <button
+            on:click={() => dismissSurvey(false)}
+            class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs rounded-lg transition-colors"
+          >
+            No thanks
+          </button>
+        </div>
+      </div>
+    </div>
   {/if}
 </main>
