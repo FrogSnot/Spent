@@ -1,0 +1,37 @@
+# Governance policy for Spent's optional governed-MCP access. kriya-mcp enforces this on every
+# tools/call from the external agent — the agent can only *propose*; this policy decides.
+#
+# Posture: reads and routine entry flow freely; anything that destroys records or imports in
+# bulk pauses for on-device human approval; everything else is denied by default; and a
+# per-minute cap stops a runaway agent. First matching rule wins.
+rules:
+  # Reads — safe to run unattended.
+  - action: "get_*"
+    allow: true
+  - action: "export_csv"
+    allow: true
+
+  # Routine writes — allowed, and every one is recorded in the signed audit log.
+  - action: "add_*"
+    allow: true
+  - action: "update_*"
+    allow: true
+
+  # Destructive / bulk — pause for a human's go-ahead, every time.
+  - action: "delete_*"
+    allow: true
+    require_approval: true
+  - action: "clear_all_data"
+    allow: true
+    require_approval: true
+  - action: "import_csv"
+    allow: true
+    require_approval: true
+
+  # Everything else: denied (deny-by-default). An agent cannot invoke anything not listed above.
+  - action: "*"
+    allow: false
+
+budget:
+  # A looping agent can't hammer your finances: at most 30 actions per rolling minute.
+  max_actions_per_minute: 30

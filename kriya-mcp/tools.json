@@ -1,0 +1,262 @@
+[
+  {
+    "name": "get_containers",
+    "version": 1,
+    "description": "List all containers (isolated balance buckets) with id, name and default flag.",
+    "permissions": [],
+    "inputSchema": { "type": "object", "properties": {}, "required": [] }
+  },
+  {
+    "name": "get_categories",
+    "version": 1,
+    "description": "List all category names.",
+    "permissions": [],
+    "inputSchema": { "type": "object", "properties": {}, "required": [] }
+  },
+  {
+    "name": "get_db_path",
+    "version": 1,
+    "description": "Return the local filesystem path of the Spent SQLite database.",
+    "permissions": [],
+    "inputSchema": { "type": "object", "properties": {}, "required": [] }
+  },
+  {
+    "name": "get_transactions",
+    "version": 1,
+    "description": "List transactions for a container, newest first. Optional limit.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "container_id": { "type": "integer" },
+        "limit": { "type": "integer" }
+      },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "get_transactions_for_month",
+    "version": 1,
+    "description": "List a container's transactions for a month (YYYY-MM), newest first. Optional limit.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "container_id": { "type": "integer" },
+        "month": { "type": "string" },
+        "limit": { "type": "integer" }
+      },
+      "required": ["container_id", "month"]
+    }
+  },
+  {
+    "name": "get_monthly_balance",
+    "version": 1,
+    "description": "Net balance (minor units / cents) for the current month in a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "container_id": { "type": "integer" } },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "get_all_time_balance",
+    "version": 1,
+    "description": "All-time net balance (minor units / cents) for a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "container_id": { "type": "integer" } },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "get_balance_for_month",
+    "version": 1,
+    "description": "Net balance (minor units / cents) for a given month (YYYY-MM) in a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "container_id": { "type": "integer" },
+        "month": { "type": "string" }
+      },
+      "required": ["container_id", "month"]
+    }
+  },
+  {
+    "name": "get_category_totals",
+    "version": 1,
+    "description": "Spending totals per category (expenses only) for the current month in a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "container_id": { "type": "integer" } },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "get_category_totals_for_month",
+    "version": 1,
+    "description": "Spending totals per category (expenses only) for a month (YYYY-MM) in a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "container_id": { "type": "integer" },
+        "month": { "type": "string" }
+      },
+      "required": ["container_id", "month"]
+    }
+  },
+  {
+    "name": "get_available_months",
+    "version": 1,
+    "description": "List the months (YYYY-MM) that have transactions in a container.",
+    "permissions": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "container_id": { "type": "integer" } },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "export_csv",
+    "version": 1,
+    "description": "Export a container's transactions as a CSV string.",
+    "permissions": ["read:export"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "container_id": { "type": "integer" } },
+      "required": ["container_id"]
+    }
+  },
+  {
+    "name": "add_transaction",
+    "version": 1,
+    "description": "Add a transaction. amount is minor units (cents): negative = expense, positive = income.",
+    "permissions": ["write:transactions"],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "amount": { "type": "integer" },
+        "container_id": { "type": "integer" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["amount", "container_id"]
+    }
+  },
+  {
+    "name": "update_transaction",
+    "version": 1,
+    "description": "Update an existing transaction's amount (cents), description and category.",
+    "permissions": ["write:transactions"],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "amount": { "type": "integer" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "amount", "description", "category"]
+    }
+  },
+  {
+    "name": "add_category",
+    "version": 1,
+    "description": "Create a new category.",
+    "permissions": ["write:categories"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "name": { "type": "string" } },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "add_container",
+    "version": 1,
+    "description": "Create a new container (isolated balance bucket).",
+    "permissions": ["write:containers"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "name": { "type": "string" } },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "update_container",
+    "version": 1,
+    "description": "Rename an existing container.",
+    "permissions": ["write:containers"],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    }
+  },
+  {
+    "name": "delete_transaction",
+    "version": 1,
+    "description": "Permanently delete a transaction by id. Requires human approval.",
+    "permissions": ["delete:transactions"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "id": { "type": "integer" } },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "delete_category",
+    "version": 1,
+    "description": "Delete a non-default category by name. Requires human approval.",
+    "permissions": ["delete:categories"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "name": { "type": "string" } },
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "delete_container",
+    "version": 1,
+    "description": "Delete a non-default container by id (cascades its transactions). Requires human approval.",
+    "permissions": ["delete:containers"],
+    "inputSchema": {
+      "type": "object",
+      "properties": { "id": { "type": "integer" } },
+      "required": ["id"]
+    }
+  },
+  {
+    "name": "clear_all_data",
+    "version": 1,
+    "description": "Delete ALL transactions and non-default containers. Irreversible; requires human approval.",
+    "permissions": ["delete:all"],
+    "inputSchema": { "type": "object", "properties": {}, "required": [] }
+  },
+  {
+    "name": "import_csv",
+    "version": 1,
+    "description": "Bulk-import transactions from CSV text into a container. Requires human approval.",
+    "permissions": ["write:bulk"],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "csv_content": { "type": "string" },
+        "container_id": { "type": "integer" },
+        "amount_column": { "type": "integer" },
+        "description_column": { "type": "integer" },
+        "category_column": { "type": "integer" },
+        "date_column": { "type": "integer" },
+        "skip_header": { "type": "boolean" }
+      },
+      "required": ["csv_content", "container_id", "amount_column", "description_column", "category_column", "date_column"]
+    }
+  }
+]

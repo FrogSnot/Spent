@@ -67,6 +67,22 @@ npm run tauri build
 - Switch between containers using the dropdown in sidebar
 - Create/manage containers via Command Palette → "Manage Containers"
 
+## Governed AI access (optional)
+
+Spent is local-first with no API, so the only ways an AI assistant could operate it today are
+screen-scraping or raw database access — both ungoverned. The optional [`kriya-mcp/`](kriya-mcp/)
+integration instead exposes a curated set of Spent's existing actions to an assistant (e.g. Claude
+Desktop) as a **governed MCP server**:
+
+- **Reads** (balances, transactions, category totals) run freely.
+- **Writes** (add/update transactions, categories, containers) are recorded in a signed audit log.
+- **Destructive/bulk** actions (`delete_*`, `clear_all_data`, CSV import) pause for **human approval**.
+- A per-minute **budget** caps a runaway agent; anything not allow-listed is **denied by default**.
+
+It's **off by default** and changes nothing in the app: the `kriya_exec` helper binary reuses the
+exact `Database` methods the UI already calls, and all governance lives in the external `kriya-mcp`
+process. See [`kriya-mcp/README.md`](kriya-mcp/README.md) to enable it.
+
 ## Data
 
 The database is stored locally in platform-specific locations:
