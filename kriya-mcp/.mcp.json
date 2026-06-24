@@ -1,0 +1,16 @@
+{
+  "//": "TEMPLATE — copy the mcpServers.spent block into your assistant's MCP config and replace the /ABSOLUTE/PATH placeholders. For Claude Desktop on macOS that file is ~/Library/Application Support/Claude/claude_desktop_config.json. See kriya-mcp/README.md. (Optional: add an \"env\": {\"SPENT_DB_PATH\": \"...\"} to point at a different database; by default it opens the same one the app uses.)",
+  "mcpServers": {
+    "spent": {
+      "command": "kriya-mcp",
+      "args": [
+        "--exec", "/ABSOLUTE/PATH/TO/Spent/src-tauri/target/release/spent-app --exec",
+        "--tools", "/ABSOLUTE/PATH/TO/Spent/kriya-mcp/tools.json",
+        "--policy", "/ABSOLUTE/PATH/TO/Spent/kriya-mcp/agent-policy.yaml",
+        "--persistent",
+        "--approval", "gui",
+        "--actor", "claude-desktop"
+      ]
+    }
+  }
+}

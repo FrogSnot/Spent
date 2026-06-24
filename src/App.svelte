@@ -118,6 +118,28 @@
     }
   }
 
+  // Live-reload for the governed-AI bolt-on: an agent operates Spent through `spent --exec`, a
+  // SEPARATE process that writes to spent.db. The GUI holds its data in memory, so without this it
+  // wouldn't see the agent's edits until you interacted. Poll the (cheap) transactions query while
+  // the window is visible and only do a full reload when the data actually changed — so an agent's
+  // add/delete appears within ~1.5s, with no flicker when nothing changed.
+  async function liveRefresh() {
+    if (!selectedContainer || document.visibilityState !== 'visible') return;
+    try {
+      const txLimit = $appSettings.transactionLimit || null;
+      const probe = selectedMonth === getCurrentMonth()
+        ? await invoke<Transaction[]>('get_transactions', { containerId: selectedContainer.id, limit: txLimit })
+        : await invoke<Transaction[]>('get_transactions_for_month', { containerId: selectedContainer.id, month: selectedMonth, limit: txLimit });
+      if (JSON.stringify(probe) !== JSON.stringify(transactions)) {
+        await loadContainers();
+        await loadAvailableMonths();
+        await loadData();
+      }
+    } catch {
+      /* transient (e.g. DB locked mid-write) — next tick retries */
+    }
+  }
+
   let _lastMonth = '';
   let _lastContainerId: number | null = null;
 
@@ -307,6 +329,10 @@
     const handleKeydownEvent = (event: KeyboardEvent) => handleKeydown(event);
     window.addEventListener('keydown', handleKeydownEvent);
 
+    // Live-reload so an agent's external writes (via `spent --exec`) appear without manual interaction.
+    window.addEventListener('focus', liveRefresh);
+    const liveReloadInterval = setInterval(liveRefresh, 1500);
+
     // Survey usage tracker
     let usageInterval: ReturnType<typeof setInterval> | null = null;
     if (!localStorage.getItem(SURVEY_KEY)) {
@@ -327,6 +353,8 @@
     
     return () => {
       window.removeEventListener('keydown', handleKeydownEvent);
+      window.removeEventListener('focus', liveRefresh);
+      clearInterval(liveReloadInterval);
       if (usageInterval) clearInterval(usageInterval);
     };
   });

@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod database;
+mod exec;
 
 use database::{Database, NewTransaction, Transaction, Container};
 use std::sync::Arc;
@@ -171,6 +172,20 @@ fn clear_all_data(db: tauri::State<Arc<Database>>) -> Result<(), String> {
 }
 
 fn main() {
+    // Optional governed-AI bolt-on (handled before Tauri starts, so no window opens and the GUI
+    // path below is unchanged). `--dump-tools` prints the generated MCP tool schemas; `--exec`
+    // runs the headless action handler that the external `kriya-mcp` governor drives (it enforces
+    // policy → approval → budget → signed audit). See kriya-mcp/README.md.
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--dump-tools") {
+        exec::dump_tools();
+        return;
+    }
+    if args.iter().any(|a| a == "--exec") {
+        exec::run();
+        return;
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
